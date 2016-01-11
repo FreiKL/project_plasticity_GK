@@ -14,13 +14,17 @@ n_secondary_dends = ndend*size_parameter //
 vdark = -43
 n_neuron = 2
 
+double Data[21][500001]
+
+
 begintemplate cell
-public nclist, soma, dend, secondary_dendrites, neck_secondary_dends, tip_secondary_dends, axon, axonterm, size_parameter, n_secondary_dends
+
+public soma, dend, secondary_dendrites, neck_secondary_dends, tip_secondary_dends, axon, axonterm, size_parameter, n_secondary_dends
 
 create soma, dend[1], secondary_dendrites[1], neck_secondary_dends[1], tip_secondary_dends[1], axon, axonterm
 
 proc init() {
-nclist = new List()
+
 ndend = 6
 size_parameter = 25
 
@@ -146,16 +150,29 @@ for i = 0, n_neuron-1 {
 maxsyn = 10
 objectvar syn[maxsyn]
 
-syn[0]=GSyn
+//syn[0]=GSyn
+//netcon = new NetCon(source, target, threshold, delay, weight)
+//neuron_plasticity[0].soma neuron_plasticity[1].tip_secondary_dends[1] (1)(new NetCon(&v(1), GSyn, -20, 1, 0.5))
+// keep connectivity in a list of NetCon objects
+objref ncl
+ncl = new List()
+// attach an GSyn point process called syn
+// to the 0.3 location on dend[3] of cell[5]
+objref syn
+neuron_plasticity[1].tip_secondary_dends[1] syn = new GSyn(1)
 
-neuron_plasticity[0].soma neuron_plasticity[1].nclist.append(new NetCon(&v(1), syn[0], -20, 1, 0.5))
+// connect this to syn via a new NetCon object
+// and add the NetCon to the list ncl
+neuron_plasticity[0].axon ncl.append(new NetCon(&v(1), syn, -20, 0.5, 0.5))
+
+
 
 objectvar stim_vclamp
 
-neuronplasticity[0].soma stim_vclamp = new VClamp(0.5)
-stim_vclamp.dur[0] = 600
-stim_vclamp.dur[1] = 300
-stim_vclamp.dur[2] = 300
+neuron_plasticity[0].soma stim_vclamp = new VClamp(0.5)
+stim_vclamp.dur[0] = 100
+stim_vclamp.dur[1] = 200
+stim_vclamp.dur[2] = 50
 stim_vclamp.amp[0] = -40
 stim_vclamp.amp[1] = -40
 stim_vclamp.amp[2] = -40
@@ -167,20 +184,19 @@ objref savdata
 proc go() {
 
   strdef fname
-  tstop = 1200
+  tstop = 350
   dt = 0.00625*4
 
    forall {finitialize(vdark)}     //initialize membrane potential at -43 mV for all cell sections
 
 
-          for d = 0, 4 {
+          for d = 0, 5 {
 
             recv = new Vector()
-            //recv.record(&VClamp[3].i)
-            recv.record(&MBCell[0].soma.v(0.5))
-            //recv.record(&MBCell[0].tip_secondary_dends[1].v(0.5))
-            //recv.record(&MBCell[0].dend.v(0.9375))
-            stim_vclamp.amp[1] = -40-d*10
+           
+            recv.record(&neuron_plasticity[1].soma.v(0.5))
+            
+            stim_vclamp.amp[1] = -30+d*10
             init()
             run()
             doEvents()
@@ -205,8 +221,8 @@ proc go() {
             }
 
             savdata.close()
-        }
-}
-access neuron_plasticity[0].soma
-//xopen("xxx.ses")
+    }
+
+access neuron_plasticity[1].soma
+xopen("sessiontest.ses")
 go()
